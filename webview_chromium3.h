@@ -34,6 +34,7 @@ class wxWebViewChromium;
 
 // ClientHandler implementation.
 class ClientHandler : public CefClient,
+                      public CefContextMenuHandler,
                       public CefDisplayHandler,
                       public CefLifeSpanHandler,
                       public CefLoadHandler
@@ -42,6 +43,7 @@ public:
     ClientHandler() {};
     virtual ~ClientHandler() {};
 
+    virtual CefRefPtr<CefContextMenuHandler> GetContextMenuHandler() { return this; }
     virtual CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() { return this; }
     virtual CefRefPtr<CefLoadHandler> GetLoadHandler() { return this; }
     virtual CefRefPtr<CefDisplayHandler> GetDisplayHandler() { return this; }
@@ -59,6 +61,19 @@ public:
                                   const CefString& message,
                                   const CefString& source,
                                   int line);
+
+    // CefContextMenuHandler methods
+    virtual void OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
+                                     CefRefPtr<CefFrame> frame,
+                                     CefRefPtr<CefContextMenuParams> params,
+                                     CefRefPtr<CefMenuModel> model);
+    virtual bool OnContextMenuCommand(CefRefPtr<CefBrowser> browser,
+                                      CefRefPtr<CefFrame> frame,
+                                      CefRefPtr<CefContextMenuParams> params,
+                                      int command_id,
+                                      CefContextMenuHandler::EventFlags event_flags);
+    virtual void OnContextMenuDismissed(CefRefPtr<CefBrowser> browser,
+                                        CefRefPtr<CefFrame> frame);
 
     // CefLifeSpanHandler methods
     virtual bool OnBeforePopup(CefRefPtr<CefBrowser> browser,
@@ -85,8 +100,6 @@ public:
                              ErrorCode errorCode,
                              const CefString& errorText,
                              const CefString& failedUrl);
-    virtual void OnRenderProcessTerminated(CefRefPtr<CefBrowser> browser,
-                                           TerminationStatus status);
 
     CefRefPtr<CefBrowser> GetBrowser() { return m_browser; }
 
@@ -121,6 +134,10 @@ public:
     ~wxWebViewChromium();
 
     void OnSize(wxSizeEvent &event);
+
+    void SetPageSource(const wxString& pageSource);
+
+    void SetPageText(const wxString& pageText);
 
     bool Create(wxWindow* parent,
            wxWindowID id,
@@ -195,7 +212,9 @@ public:
     //Virtual Filesystem Support
     virtual void RegisterHandler(wxSharedPtr<wxWebViewHandler> handler);
 
-    static bool StartUp(int &code);
+    static bool StartUp(int &code, const wxString &path = "");
+    // If using a separate subprocess then return the result of this function
+    static int StartUpSubprocess();
     static void Shutdown();
 
 protected:
@@ -208,14 +227,22 @@ private:
     bool m_historyLoadingFromList;
     bool m_historyEnabled;
 
-    //We need to store the title ourselves
+    //We need to store the title and zoom ourselves
     wxString m_title;
+    wxWebViewZoom m_zoomLevel;
 
     //The timer calls the CEF event loop
     wxTimer *m_timer;
 
+    // Current main frame page source
+    wxString m_pageSource;
+
+    // The text of the current page
+    wxString m_pageText;
+
     //We also friend ClientHandler so it can access the history
     friend class ClientHandler;
+    CefRefPtr<ClientHandler> m_clientHandler;
   
     wxDECLARE_DYNAMIC_CLASS(wxWebViewChromium);
 };
